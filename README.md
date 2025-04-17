@@ -80,7 +80,6 @@ Here’s how the problems are structured:
 ## ✅ Questions & Solutions
 ### Basic to Intermediate
 Q1. FIND THE NUMBER OF STORES IN EACH COUNTRY
-
 ```sql
 SELECT country, COUNT(store_id) AS store_count 
 FROM stores
@@ -112,4 +111,59 @@ SELECT DISTINCT store_id
 FROM sales AS sa
 RIGHT JOIN warranty AS w
 ON sa.sale_id=w.sale_id);
+```
+
+Q5. CALCULATE THE PERCENTAGE OF WARRANTY CLAIMS MARKED AS "Warranty Void"
+```sql
+SELECT ROUND(COUNT(claim_id)/(SELECT COUNT(*) FROM warranty)::numeric *100,2) AS warranty_void_percentage
+FROM warranty
+WHERE repair_status='Warranty Void';
+```
+
+Q6. IDENTIFY WHICH STORE HAD THE HIGHEST TOTAL UNIT SOLD IN THE LAST YEAR
+```sql
+SELECT sa.store_id, st.store_name, SUM(sa.quantity) as total_unit_sold
+FROM sales sa
+JOIN stores st
+ON sa.store_id=st.store_id
+WHERE sa.sale_date >= (CURRENT_DATE - INTERVAL '1 YEAR')
+GROUP BY sa.store_id, st.store_name
+ORDER BY total_unit_sold DESC
+LIMIT 1;
+```
+
+Q7. COUNT THE NUMBER OF UNIQUE PRODUCTS SOLD IN THE LAST YEAR
+```sql
+SELECT COUNT(DISTINCT s.product_id) as unique_product_sold
+FROM sales s
+WHERE sale_date >= (CURRENT_DATE - INTERVAL '1 YEAR');
+```
+
+Q8. FIND THE AVERAGE PRICE OF PRODUCTS IN EACH CATEGORY
+```sql
+SELECT c.category_id, c.category_name, AVG(p.price) AS average_price
+FROM category c
+JOIN products p
+ON c.category_id=p.category_id
+GROUP BY c.category_id, c.category_name
+ORDER BY average_price DESC;
+```
+
+Q9. HOW MANY WARRANTY CLAIMS WERE FILED IN 2020
+```sql
+SELECT COUNT(*) AS warranty_claim
+FROM warranty
+WHERE EXTRACT(YEAR FROM claim_date)=2020;
+```
+
+Q10. FOR EACH STORE, IDENTIFY THE BEST-SELLING DAY BASED ON HIGHEST QUANTITY SOLD.
+```sql
+SELECT *FROM
+(
+	SELECT store_id, TO_CHAR(sale_date, 'Day') AS day_name, SUM(quantity) AS total_unit_sold,
+	RANK() OVER(PARTITION BY store_id ORDER BY SUM(quantity) DESC) AS rank
+	FROM sales
+	GROUP BY store_id, day_name
+) AS t1
+WHERE rank=1;
 ```
