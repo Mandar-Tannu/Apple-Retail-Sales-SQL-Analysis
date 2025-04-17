@@ -1,4 +1,4 @@
-# 🍏 Apple Retail Sales Analysis with SQL
+# Apple Retail Sales Analysis with SQL
 
 ## 👋 Introduction
 Welcome to my SQL-based data analysis project focused on Apple retail sales!  
@@ -78,7 +78,9 @@ Here’s how the problems are structured:
 ---
 
 ## ✅ Questions & Solutions
+
 ### Basic to Intermediate
+
 Q1. FIND THE NUMBER OF STORES IN EACH COUNTRY
 ```sql
 SELECT country, COUNT(store_id) AS store_count 
@@ -168,6 +170,8 @@ SELECT *FROM
 WHERE rank=1;
 ```
 
+### Intermediate to Advanced
+
 Q11. IDENTIFY THE LEAST SELLING PRODUCT IN EACH COUNTRY FOR EACH YEAR BASED ON TOTAL UNITS SOLD
 ```sql
 WITH product_rank
@@ -232,4 +236,121 @@ JOIN category AS c
 ON c.category_id=p.category_id
 WHERE w.claim_date >= CURRENT_DATE - INTERVAL '2 YEAR'
 GROUP BY c.category_name;
+```
+
+### Advanced/Complex
+
+Q16. DETERMINE THE PERCENTAGE CHANCE OF RECEIVING WARRANTY CLAIMS AFTER EACH PURCHASE FOR EACH COUNTRY
+```sql
+SELECT country, total_sales, total_claims, ROUND(COALESCE(total_claims::numeric/total_sales::numeric * 100,0),2) AS percentage_warranty_claims
+FROM
+	(SELECT st.country, SUM(s.quantity) AS total_sales, COUNT(w.claim_id) AS total_claims
+		FROM sales AS s
+		JOIN stores AS st
+		ON s.store_id = st.store_id
+		LEFT JOIN
+		warranty AS w
+		ON s.sale_id = w.sale_id
+		GROUP BY st.country) t1
+ORDER BY percentage_warranty_claims DESC;
+```
+
+Q17. ANALYZE YEAR BY YEAR GROWTH RATIO FOR EACH STORE
+```sql
+WITH yearly_sales AS(
+					SELECT st.store_id, st.store_name, EXTRACT(YEAR FROM s.sale_date) AS year, SUM(p.price * s.quantity ) AS total_sale
+					FROM sales AS s
+					JOIN
+					products AS p
+					ON s.product_id = p.product_id
+					JOIN stores st
+					ON s.store_id = st.store_id
+					GROUP BY 1,2,3
+					ORDER BY 1,2,3 
+),
+Growth_Ratio AS(
+					SELECT store_name, year, LAG(total_sale,1) OVER(PARTITION BY store_name ORDER BY year) AS last_year_sale, total_sale AS current_year_sale
+					FROM yearly_sales
+)
+
+SELECT store_name, year, last_year_sale, current_year_sale, ROUND((current_year_sale - last_year_sale)::numeric/last_year_sale::numeric * 100,3) AS growth_ratio
+FROM growth_ratio
+WHERE last_year_sale IS NOT NULL AND year<>EXTRACT(YEAR FROM CURRENT_DATE);
+```
+
+Q18. CALCULATE THE CORRELATION BETWEEN PRODUCT PRICE AND WARRANTY CLAIMS FOR PRODUCTS SOLD IN THE LAST FIVE YEARS, SEGMENTED BY PRICE RANGE.
+```sql
+SELECT
+CASE
+	WHEN p.price < 500 THEN 'LESS EXPENSIVE PRODUCT'
+	WHEN p.price BETWEEN 500 AND 1000 THEN 'MID RANGE PRODUCT'
+	ELSE 'EXPENSIVE PRODUCT'
+	END AS price_Segment,
+	COUNT(w.claim_id) AS Total_claims
+FROM warranty AS w
+LEFT JOIN sales AS s
+ON w.sale_id = s.sale_id
+JOIN products AS p
+ON p.product_id =s.product_id
+WHERE claim_date >= CURRENT_DATE - INTERVAL '5 year'
+GROUP BY 1;
+```
+
+Q19. IDENDITY THE STORE WITH THE HIGHEST PERCENTAGE OF "Paid Repaired" CLAIMS RELATIVE TO TOTAL CLAIMS FILED 
+```sql
+WITH paid_repair AS(
+					SELECT s.store_id, COUNT(w.claim_id) AS paid_repaired
+					FROM sales AS s
+					RIGHT JOIN warranty AS w
+					ON s.sale_id = w.sale_id
+					WHERE w.repair_status = 'Paid Repaired'
+					GROUP BY 1
+),
+
+total_repaired AS(
+					SELECT s.store_id, COUNT(w.claim_id) AS total_repaired
+					FROM sales AS s
+					RIGHT JOIN warranty AS w
+					ON s.sale_id = w.sale_id
+					GROUP BY 1
+)
+
+SELECT tr.store_id, st.store_name, pr.paid_repaired, tr.total_repaired, ROUND(pr.paid_repaired::numeric /tr.total_repaired::numeric *100,2) as percentage_paid_repaired
+FROM paid_repair AS pr
+JOIN total_repaired AS tr
+ON pr.store_id = tr.store_id
+JOIN stores AS st
+ON st.store_id = tr.store_id
+ORDER BY percentage_paid_repaired DESC;
+```
+
+Q20. WRITE A QUERY TO CALCULATE THE MONTHLY RUNNING TOTAL OF SALES FOR EACH STORE OVER THE PAST FOUR YEARS AND COMPARE TRENDS DURING THIS PERIOD
+```sql
+WITH monthly_sales AS(
+					SELECT s.store_id, EXTRACT(YEAR FROM s.sale_date) AS year, EXTRACT(MONTH FROM s.sale_date) AS month, SUM(p.price * s.quantity) AS total_revenue
+					FROM sales AS s
+					JOIN products AS p
+					ON p.product_id = s.product_id
+					GROUP BY s.store_id, year, month
+					ORDER BY s.store_id, year, month
+)
+SELECT store_id, month, year, total_revenue, SUM(total_revenue) OVER(PARTITION BY store_id ORDER BY year, month) AS running_total
+FROM monthly_sales;
+```
+
+Q21. ANALYZE PRODUCT SALES TRENDS OVER TIME, SEGMENTED INTO KEY PERIODS: FROM LAUNCH TO 6 MONTHS, 6-12 MONTHS, 12-18 MONTHS, AND BEYOND 18 MONTHS
+```sql
+SELECT p.product_name,
+CASE
+  WHEN s.sale_date BETWEEN p.launch_date AND p.launch_date + INTERVAL '6 month' THEN '0-6 month'
+  WHEN s.sale_date BETWEEN p.launch_date + INTERVAL '6 month' AND p.launch_date + INTERVAL '12 month' THEN '6-12 month'
+  WHEN s.sale_date BETWEEN p.launch_date + INTERVAL '12 month' AND p.launch_date + INTERVAL '18 month' THEN '12-18 month'
+  ELSE '18+ month'
+END AS product_life_cycle,
+SUM(s.quantity) AS total_quantity_sale
+FROM sales AS s
+JOIN products p
+ON s.product_id = p.product_id
+GROUP BY 1,2
+ORDER BY 1,3 DESC;
 ```
