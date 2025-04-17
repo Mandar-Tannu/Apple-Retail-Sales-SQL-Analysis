@@ -167,3 +167,69 @@ SELECT *FROM
 ) AS t1
 WHERE rank=1;
 ```
+
+Q11. IDENTIFY THE LEAST SELLING PRODUCT IN EACH COUNTRY FOR EACH YEAR BASED ON TOTAL UNITS SOLD
+```sql
+WITH product_rank
+AS
+(
+	SELECT st.country, p.product_name, SUM(sa.quantity) AS total_quantity_sold,
+	RANK() OVER(PARTITION BY st.country ORDER BY SUM(sa.quantity)) as rank
+	FROM sales AS sa
+	JOIN
+	stores AS st
+	ON sa.store_id=st.store_id
+	JOIN
+	products p
+	ON sa.product_id=p.product_id
+	GROUP BY st.country, p.product_name
+) 
+SELECT *FROM product_rank
+WHERE rank=1;
+```
+
+Q12. CALCULATE HOW MANY WARRANTY CLAIMS WERE FILED WITHIN 180 DAYS OF PRODUCT SALE.
+```sql
+SELECT COUNT(*) as no_of_claim_received_within_180_days
+FROM warranty w 
+LEFT JOIN sales s
+ON w.sale_id=s.sale_id
+WHERE w.claim_date-s.sale_date<=180;
+```
+
+Q13. DETERIMNE HOW MANY WARRANTY CLAIMS WERE FILED FOR PRODUCTS LAUNCHED IN THE LAST TWO YEARS
+```sql
+SELECT p.product_name, COUNT(w.claim_id) as no_of_claim, COUNT(s.sale_id)
+FROM warranty as w
+RIGHT JOIN sales as s
+ON w.sale_id=s.sale_id
+JOIN products as p
+ON s.product_id=p.product_id
+WHERE p.launch_date >= CURRENT_DATE - INTERVAL '2 YEARS'
+GROUP BY p.product_name;
+```
+
+Q14. LIST THE MONTHS IN THE LAST THREE YEARS WHERE SALES EXCEEDED 5000 UNITS IN THE USA
+```sql
+SELECT TO_CHAR(sale_date, 'MM-YYYY') AS months, SUM(s.quantity) AS total_unit_sold
+FROM sales AS s
+JOIN stores AS st
+ON s.store_id=st.store_id
+WHERE st.country='USA' AND s.sale_date >= CURRENT_DATE - INTERVAL '3 YEAR'
+GROUP BY 1
+HAVING SUM(s.quantity) > 5000;
+```
+
+Q15. IDENTIFY THE PRODUCT CATEGORY WITH THE MOST WARRANTY CLAIMS FILED IN THE LAST TWO YEARS
+```sql
+SELECT c.category_name, COUNT(w.claim_id) AS total_claims
+FROM warranty AS w
+LEFT JOIN sales AS s
+ON w.sale_id=s.sale_id
+JOIN products AS p
+ON p.product_id=s.product_id
+JOIN category AS c
+ON c.category_id=p.category_id
+WHERE w.claim_date >= CURRENT_DATE - INTERVAL '2 YEAR'
+GROUP BY c.category_name;
+```
