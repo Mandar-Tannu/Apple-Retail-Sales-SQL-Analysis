@@ -24,7 +24,7 @@ I worked with 5 relational tables:
 
 Here’s a quick look at how the tables relate to each other:
 
-![ER Diagram](https://github.com/Mandar-Tannu/Apple-Retail-Sales-SQL-Analysis/blob/main/ER%20Diagram.png?raw=true)
+![ER Diagram](https://github.com/Mandar-Tannu/Apple-Retail-Sales-SQL-Analysis/blob/main/ER%20Diagram/ER%20Diagram.png?raw=true)
 
 ## 🗄️ Database Schema Summary
 
